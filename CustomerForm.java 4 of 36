@@ -1,0 +1,46 @@
+import javax.microedition.midlet.*;
+import javax.microedition.lcdui.*;
+import javax.microedition.rms.*;
+import java.util.*;
+/*Shows info for a customer*/
+public class CustomerForm extends javax.microedition.lcdui.Form implements MSalesScreen
+{
+private Controller controller;
+private Hashtable keys;
+//set up fields
+private StringItem customerName = new StringItem("customer", null);
+private StringItem company = new StringItem("company", null);
+private StringItem phoneNum = new StringItem("phone", null);
+private StringItem address = new StringItem("address", null);
+private StringItem city = new StringItem(null, null);
+private StringItem zip = new StringItem(null, null);
+public CustomerForm(Controller controller)
+{
+super("Customer");
+76
+this.controller = controller;
+append(customerName);
+append(company);
+append(phoneNum);
+append(address);
+append(city);
+append(zip);
+}
+public void update(java.lang.Object info)
+{
+try
+{
+Customer record = (Customer)controller.getData("Customer", info);
+customerName.setText(record.getFullName());
+company.setText(record.getCompany());
+phoneNum.setText(record.getPhoneNumber());
+address.setText(record.getAddress()+"\n");
+city.setText(record.getCity()+"\n");
+zip.setText(record.getZip());
+}
+catch (Exception e) { System.out.println("CustomerForm Exeception: "+e.toString()); }
+}
+public Object getSelectedKey()
+{
+return(null);
+}}
