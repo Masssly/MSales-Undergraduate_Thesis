@@ -1,0 +1,39 @@
+import javax.microedition.midlet.*;
+import javax.microedition.lcdui.*;
+/*The login form*/
+public class LoginForm extends Form implements MSalesScreen
+{
+private Controller controller;
+private TextField username = new TextField("Username", "", 8, TextField.ANY);
+private TextField password = new TextField("Password", "", 8, TextField.PASSWORD);
+private StringItem status = new StringItem(null, null);
+public LoginForm(String title, Controller controller)
+{
+super(title);
+this.controller = controller;
+append(username);
+append(password);
+append(status);
+}
+public void update(java.lang.Object info)
+{
+75
+}
+public String getUsername()
+{
+return(username.getString());
+}
+public String getPassword()
+{
+return(password.getString());
+}
+public Object getSelectedKey()
+{
+return(null);
+}
+public void setAuthenticating(boolean auth)
+{
+if(auth) status.setText("\nAuthenticating...");
+else status.setText("");
+}
+}
