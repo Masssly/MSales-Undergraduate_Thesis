@@ -1,0 +1,6 @@
+*The interface that all MSales screens must implement.*/
+public interface MSalesScreen {
+public void update(java.lang.Object info);
+public Object getSelectedKey();
+}
+/*
