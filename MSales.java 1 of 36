@@ -1,0 +1,490 @@
+import javax.microedition.midlet.*;
+import javax.microedition.lcdui.*;
+import java.util.Vector;
+import java.io.*;
+import java.util.*;
+import javax.microedition.io.*;
+/* An example MIDlet that allows a sales agents to see customer information, orders, and productsin the field. This information can be updated over the internet. */
+public class MSales extends MIDlet implements CommandListener
+{
+// The command objects used throughout the app
+private Command exitCommand; // The exit command
+private Command loginCommand; //move to the schedule display screen
+private Command backCommand;
+private Command logoutCommand;
+private Command mainMenuCommand;
+private Command cancelUpdateCommand;
+private Command customerOrdersCommand;
+private Command submitCommand;
+// The displayable objects both Forms and Lists
+private Display display; // The display for this MIDlet
+private LoginForm loginForm;
+private AppointmentForm appointmentForm;
+private CustomerForm customerInfoForm;
+private ProductForm productForm;
+private OrderDetailForm orderForm;
+private Form updateForm;
+private javax.microedition.lcdui.List mainMenuList;
+private ScheduleList scheduleList;
+private ProductList productList;
+private CustomerList customerList;
+private OrderSummaryList orderSummaryList;
+private OrderDetailList orderDetailList;
+private NewOrderForm newOrderForm;
+private OrderCustomerList orderCustomerList;
+private OrderProductList orderProductList;
+// Controller object manages the application's state and encapsulates the business logic layer
+private Controller controller;
+private StringItem updateStatus;
+// The sync thread handles datastore updates
+private SyncThread sync;
+private Gauge updateGauge;
+public MSales()
+{
+display = Display.getDisplay(this);
+// create all the GUI command objects
+exitCommand = new Command("Exit", Command.SCREEN, 1);
+loginCommand = new Command("Login", Command.SCREEN, 2);
+backCommand = new Command("Back", Command.BACK, 2);
+mainMenuCommand = new Command("Main", Command.SCREEN, 2);
+logoutCommand = new Command("Logout", Command.SCREEN, 2);
+cancelUpdateCommand = new Command("Cancel", Command.SCREEN, 2);
+submitCommand = new Command("Submit", Command.SCREEN, 1);
+// create the controller object that encapsulates business logic
+controller = new Controller(this);
+}
+/*Start up the MSales MIDlet by initializing all the screens */
+public void startApp()
+{
+setUpLoginForm();
+setUpMainMenuList();
+setUpSchedule();
+setUpAppointmentDisplay();
+setUpCustomerInfoForm();
+setUpProductList();
+setUpProductForm();
+setUpCustomerList();
+setUpOrderDetailList();
+setUpOrderSummaryList();
+setUpOrderForm();
+setUpUpdateForm();
+setUpNewOrderForm();
+setUpOrderCustomerList();
+setUpOrderProductList();
+display.setCurrent(loginForm);
+}
+/* Pause is called when MSales is no longer the current application. */
+public void pauseApp()
+{
+}
+/* Destroy must cleanup everything not handled by the garbage collector.*/
+public void destroyApp(boolean unconditional)
+{
+controller.closeRecordSets();
+}
+65
+/*Respond to commands, including exit On the exit command, cleanup and notify that the MIDlet has been destroyed.*/
+public void commandAction(Command c, Displayable d)
+{
+if (c == exitCommand)
+{
+destroyApp(false);
+notifyDestroyed();
+}
+if(c == logoutCommand) display.setCurrent(loginForm);
+if(c == mainMenuCommand) display.setCurrent(mainMenuList);
+if(d == updateForm && c == cancelUpdateCommand)
+{
+sync.cancel();
+display.setCurrent(mainMenuList);
+}
+if(d == loginForm) processAction(c, loginForm);
+if(d == scheduleList) processAction(c, scheduleList);
+if(d == appointmentForm) processAction(c, appointmentForm);
+if(d == productList) processAction(c, productList);
+if(d == productForm) processAction(c, productForm);
+if(d == customerList) processAction(c, customerList);
+if(d == customerInfoForm) processAction(c, customerInfoForm);
+if(d == orderSummaryList) processAction(c, orderSummaryList);
+if(d == orderDetailList) processAction(c, orderDetailList);
+if(d == orderForm) processAction(c, orderForm);
+if(d == newOrderForm) processAction(c, newOrderForm);
+if(d == orderCustomerList) processAction(c, orderCustomerList);
+if(d == orderProductList) processAction(c, orderProductList);
+if(d == mainMenuList)
+{
+if (c == loginCommand) display.setCurrent(loginForm);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+int selIndex = mainMenuList.getSelectedIndex();
+if(mainMenuList.getString(selIndex).equals("Schedule"))
+{
+updateSchedule();
+display.setCurrent(scheduleList);
+}
+if(mainMenuList.getString(selIndex).equals("Products"))
+{
+updateProductList();
+display.setCurrent(productList);
+}
+if(mainMenuList.getString(selIndex).equals("Customers"))
+66
+{
+updateCustomerList();
+display.setCurrent(customerList);
+}
+if(mainMenuList.getString(selIndex).equals("Orders"))
+{
+updateOrderSummaryList();
+display.setCurrent(orderSummaryList);
+}
+if(mainMenuList.getString(selIndex).equals("New Order"))
+{
+updateOrderCustomerList();
+updateOrderProductList();
+display.setCurrent(orderCustomerList);
+}
+if(mainMenuList.getString(selIndex).equals("Sync Data"))
+{
+display.setCurrent(updateForm);
+sync = new SyncThread(updateStatus, updateGauge, this, controller);
+sync.start();
+}
+}
+}
+}
+// The processAction methods process the commands executed on a given screen.
+private void processAction(Command c, LoginForm d)
+{
+try {
+if(c == loginCommand)
+{
+String username = loginForm.getUsername();
+String password = loginForm.getPassword();
+loginForm.setAuthenticating(true);
+if(controller.getAuthorization(username, password))
+{
+SalesAgentSet agentSet = new SalesAgentSet();
+Enumeration enum = agentSet.getRecords();
+//it should only have one element
+if (enum.hasMoreElements())
+{
+SalesAgent agent = (SalesAgent)enum.nextElement();
+controller.setCurrAgent(agent.getAgentId());
+}
+display.setCurrent(mainMenuList);
+loginForm.setAuthenticating(false);
+67
+}
+else
+{
+loginForm.setAuthenticating(false);
+display.setCurrent(makeAlert("Login Error", "Please try again"));
+}
+}
+}
+catch (Exception e) { System.out.println("MSales Exception: "+e.toString()); }
+}
+private void processAction(Command c, ScheduleList d)
+{
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+showAppointment((String)scheduleList.getSelectedKey());}
+if (c == backCommand) display.setCurrent(mainMenuList);
+}
+private void processAction(Command c, AppointmentForm d)
+{
+if (c == backCommand) display.setCurrent(scheduleList);
+}
+private void processAction(Command c, ProductList d)
+{
+if (c == backCommand) display.setCurrent(mainMenuList);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+if(d.getTitle().equals("Products")) showProduct((String)productList.getSelectedKey());
+else
+{
+controller.setCurrProduct(Integer.parseInt((String)productList.getSelectedKey()));
+showNewOrder();
+}
+}
+}
+private void processAction(Command c, OrderProductList d)
+{
+if (c == backCommand) display.setCurrent(orderCustomerList);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+controller.setCurrProduct(Integer.parseInt((String)orderProductList.getSelectedKey()));
+showNewOrder();
+}
+}
+private void processAction(Command c, ProductForm d)
+{
+68
+if (c == backCommand) display.setCurrent(productList);
+}
+private void processAction(Command c, CustomerList d)
+{
+if (c == backCommand) display.setCurrent(mainMenuList);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+controller.setCurrCustomer(Integer.parseInt(customerList.getSelectedKey().toString()));
+showCustomer(customerList.getSelectedKey());
+}
+}
+private void processAction(Command c, OrderCustomerList d)
+{
+if (c == backCommand) display.setCurrent(mainMenuList);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+controller.setCurrCustomer(Integer.parseInt(orderCustomerList.getSelectedKey().toString()));
+display.setCurrent(orderProductList);
+}
+}
+private void processAction(Command c, CustomerForm d)
+{
+if (c == backCommand) display.setCurrent(customerList);
+}
+private void processAction(Command c, OrderSummaryList d)
+{
+if (c == backCommand) display.setCurrent(mainMenuList);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+showOrderDetail(orderSummaryList.getSelectedKey());
+}
+}
+private void processAction(Command c, OrderDetailList d)
+{
+if (c == backCommand) display.setCurrent(orderSummaryList);
+if (c == javax.microedition.lcdui.List.SELECT_COMMAND)
+{
+showOrder(orderDetailList.getSelectedKey());
+}
+}
+private void processAction(Command c, OrderDetailForm d)
+{
+if (c == backCommand) display.setCurrent(orderDetailList);
+}
+69
+private void processAction(Command c, NewOrderForm d)
+{
+if (c == backCommand) display.setCurrent(orderProductList);
+if (c == submitCommand) processOrder(d);
+}
+// The setUp methods create each screen andadd the appropriate commands to it.
+private void setUpLoginForm()
+{
+loginForm = new LoginForm("Login", controller);
+//Each Form needs an exit command
+loginForm.addCommand(exitCommand);
+loginForm.addCommand(loginCommand);
+loginForm.setCommandListener(this);
+}
+private void setUpMainMenuList()
+{
+String[] items = new String[] {"Schedule", "Products", "Customers", "Orders", "New Order", "Sync Data"};
+mainMenuList = new javax.microedition.lcdui.List("Main Menu", javax.microedition.lcdui.List.IMPLICIT, items, null);
+mainMenuList.addCommand(exitCommand);
+mainMenuList.addCommand(logoutCommand);
+mainMenuList.setCommandListener(this);
+}
+private void setUpSchedule()
+{
+scheduleList = new ScheduleList(controller);
+//Each Form needs an exit command
+scheduleList.addCommand(exitCommand);
+scheduleList.addCommand(backCommand);
+scheduleList.setCommandListener(this);
+}
+private void setUpAppointmentDisplay()
+{
+appointmentForm = new AppointmentForm(controller);
+//Each Form needs an exit command
+AppointmentForm.addCommand(exitCommand);
+appointmentForm.addCommand(backCommand);
+appointmentForm.addCommand(mainMenuCommand);
+appointmentForm.setCommandListener(this);
+}
+private void setUpCustomerInfoForm()
+{
+customerInfoForm = new CustomerForm(controller);
+//Each Form needs an exit command
+customerInfoForm.addCommand(exitCommand);
+70
+customerInfoForm.addCommand(backCommand);
+customerInfoForm.setCommandListener(this);
+}
+private void setUpCustomerList()
+{
+customerList = new CustomerList(controller);
+//Each Form needs an exit command
+customerList.addCommand(exitCommand);
+customerList.addCommand(backCommand);
+customerList.setCommandListener(this);
+}
+private void setUpProductForm()
+{
+productForm = new ProductForm(controller);
+//Each Form needs an exit command
+productForm.addCommand(exitCommand);
+productForm.addCommand(mainMenuCommand);
+productForm.addCommand(backCommand);
+productForm.setCommandListener(this);
+}
+private void setUpProductList()
+{
+productList = new ProductList(controller);
+//Each Form needs an exit command
+productList.addCommand(exitCommand);
+productList.addCommand(backCommand);
+productList.setCommandListener(this);
+}
+private void setUpOrderSummaryList()
+{
+orderSummaryList = new OrderSummaryList(controller);
+//Each Form needs an exit command
+orderSummaryList.addCommand(exitCommand);
+orderSummaryList.addCommand(backCommand);
+orderSummaryList.setCommandListener(this);
+}
+private void setUpOrderDetailList()
+{
+orderDetailList = new OrderDetailList(controller);
+//Each Form needs an exit command
+orderDetailList.addCommand(exitCommand);
+orderDetailList.addCommand(backCommand);
+orderDetailList.setCommandListener(this);
+}
+private void setUpOrderForm()
+71
+{
+orderForm = new OrderDetailForm(controller);
+//Each Form needs an exit command
+orderForm.addCommand(exitCommand);
+orderForm.addCommand(mainMenuCommand);
+orderForm.addCommand(backCommand);
+orderForm.setCommandListener(this);
+}
+private void setUpUpdateForm()
+{
+updateForm = new Form("Updating");
+updateStatus = new StringItem("Status", "");
+updateGauge = new Gauge("Progress", false, 6, 0);
+updateForm.append(updateStatus);
+updateForm.append(updateGauge);
+updateForm.addCommand(cancelUpdateCommand);
+updateForm.setCommandListener(this);
+}
+private void setUpNewOrderForm()
+{
+newOrderForm = new NewOrderForm(controller);
+//Each Form needs an exit command
+newOrderForm.addCommand(backCommand);
+newOrderForm.addCommand(submitCommand);
+newOrderForm.setCommandListener(this);
+}
+private void setUpOrderProductList()
+{
+orderProductList = new OrderProductList(controller);
+//Each Form needs an exit command
+orderProductList.addCommand(backCommand);
+orderProductList.addCommand(exitCommand);
+orderProductList.addCommand(mainMenuCommand);
+orderProductList.setCommandListener(this);
+}
+private void setUpOrderCustomerList()
+{
+orderCustomerList = new OrderCustomerList(controller);
+//Each Form needs an exit command
+orderCustomerList.addCommand(exitCommand);
+orderCustomerList.addCommand(backCommand);
+orderCustomerList.setCommandListener(this);
+}
+// The update methods trigger an update of the appropriate screen object
+private void updateProductList()
+72
+{
+productList.update(null);
+}
+private void updateCustomerList()
+{
+customerList.update(null);
+}
+private void updateOrderProductList()
+{
+orderProductList.update(null);
+}
+private void updateOrderCustomerList()
+{
+orderCustomerList.update(null);
+}
+private void updateSchedule()
+{
+scheduleList.update(null);
+}
+private void updateOrderSummaryList()
+{
+orderSummaryList.update(null);
+}
+private void updateOrderDetailList()
+{
+orderDetailList.update(null);
+}
+// The show methods enable screen transitions and pass any needed information to the screen indicating how it should update itself
+private void showAppointment(String appointId)
+{
+appointmentForm.update(appointId);
+display.setCurrent(appointmentForm);
+}
+private void showProduct(String productText)
+{
+productForm.update(productText);
+display.setCurrent(productForm);
+}
+private void showCustomer(Object customerId)
+{
+customerInfoForm.update(customerId);
+display.setCurrent(customerInfoForm);
+}
+private void showOrderSummary(Object orderNum)
+{
+73
+orderSummaryList.update(orderNum);
+display.setCurrent(orderSummaryList);
+}
+private void showOrderDetail(Object orderNum)
+{
+orderDetailList.update(orderNum);
+display.setCurrent(orderDetailList);
+}
+private void showOrder(Object orderNum)
+{
+orderForm.update(orderNum);
+display.setCurrent(orderForm);
+}
+private void showNewOrder()
+{
+newOrderForm.update(controller.getCurrProduct(), controller.getCurrCustomer());
+display.setCurrent(newOrderForm);
+}
+private void processOrder(NewOrderForm form)
+{
+form.processOrder();
+display.setCurrent(mainMenuList);
+}
+// Various utilitiy methods
+private Alert makeAlert(String title, String message)
+{
+Alert a = new Alert(title, message, null, AlertType.ERROR);
+a.setTimeout(Alert.FOREVER);
+return(a);
+}
+public void updateDone()
+{
+display.setCurrent(mainMenuList);
+}
+public Gauge getUpdateGauge()
+{
+return(updateGauge);
+}
+}
