@@ -82,7 +82,6 @@ public void destroyApp(boolean unconditional)
 {
 controller.closeRecordSets();
 }
-65
 /*Respond to commands, including exit On the exit command, cleanup and notify that the MIDlet has been destroyed.*/
 public void commandAction(Command c, Displayable d)
 {
@@ -128,7 +127,6 @@ updateProductList();
 display.setCurrent(productList);
 }
 if(mainMenuList.getString(selIndex).equals("Customers"))
-66
 {
 updateCustomerList();
 display.setCurrent(customerList);
@@ -174,7 +172,6 @@ controller.setCurrAgent(agent.getAgentId());
 }
 display.setCurrent(mainMenuList);
 loginForm.setAuthenticating(false);
-67
 }
 else
 {
@@ -220,7 +217,6 @@ showNewOrder();
 }
 private void processAction(Command c, ProductForm d)
 {
-68
 if (c == backCommand) display.setCurrent(productList);
 }
 private void processAction(Command c, CustomerList d)
@@ -265,7 +261,6 @@ private void processAction(Command c, OrderDetailForm d)
 {
 if (c == backCommand) display.setCurrent(orderDetailList);
 }
-69
 private void processAction(Command c, NewOrderForm d)
 {
 if (c == backCommand) display.setCurrent(orderProductList);
@@ -310,7 +305,6 @@ private void setUpCustomerInfoForm()
 customerInfoForm = new CustomerForm(controller);
 //Each Form needs an exit command
 customerInfoForm.addCommand(exitCommand);
-70
 customerInfoForm.addCommand(backCommand);
 customerInfoForm.setCommandListener(this);
 }
@@ -356,7 +350,6 @@ orderDetailList.addCommand(backCommand);
 orderDetailList.setCommandListener(this);
 }
 private void setUpOrderForm()
-71
 {
 orderForm = new OrderDetailForm(controller);
 //Each Form needs an exit command
@@ -402,7 +395,6 @@ orderCustomerList.setCommandListener(this);
 }
 // The update methods trigger an update of the appropriate screen object
 private void updateProductList()
-72
 {
 productList.update(null);
 }
@@ -448,7 +440,6 @@ display.setCurrent(customerInfoForm);
 }
 private void showOrderSummary(Object orderNum)
 {
-73
 orderSummaryList.update(orderNum);
 display.setCurrent(orderSummaryList);
 }
